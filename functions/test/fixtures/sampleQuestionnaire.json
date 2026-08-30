@@ -1,0 +1,15 @@
+{
+  "interests": ["Technology & Computers", "Business & Finance"],
+  "interestsOther": null,
+  "hobbies": ["Coding / Building projects", "Gaming"],
+  "hobbiesOther": null,
+  "strengths": ["Problem Solving", "Analytical Thinking"],
+  "strengthsOther": null,
+  "workStyles": ["Working independently", "Desk-based / screen work"],
+  "workStylesOther": null,
+  "priorityWeights": {
+    "interestWeight": 0.56,
+    "salaryWeight": 0.22,
+    "demandWeight": 0.22
+  }
+}
