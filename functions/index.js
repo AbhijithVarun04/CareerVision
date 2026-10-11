@@ -47,3 +47,5 @@ exports.testSignalExtraction = onCall(
     return result;
   }
 );
+
+exports.submitAssessment = require('./submitAssessment').submitAssessment;

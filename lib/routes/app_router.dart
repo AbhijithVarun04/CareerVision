@@ -16,39 +16,46 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/profile/attempt_history_screen.dart';
 
 class AppRouter {
+  // Passing `settings` keeps the route name and arguments, so screens can
+  // read them with ModalRoute.of(context)?.settings.arguments.
+  static MaterialPageRoute<dynamic> _page(RouteSettings settings, Widget screen) {
+    return MaterialPageRoute(settings: settings, builder: (_) => screen);
+  }
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case Routes.splash:
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
+        return _page(settings, const SplashScreen());
       case Routes.welcome:
-        return MaterialPageRoute(builder: (_) => const WelcomeScreen());
+        return _page(settings, const WelcomeScreen());
       case Routes.login:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
+        return _page(settings, const LoginScreen());
       case Routes.signup:
-        return MaterialPageRoute(builder: (_) => const SignupScreen());
+        return _page(settings, const SignupScreen());
       case Routes.home:
-        return MaterialPageRoute(builder: (_) => const HomeShell());
+        return _page(settings, const HomeShell());
       case Routes.questionnaire:
-        return MaterialPageRoute(builder: (_) => const QuestionnaireScreen());
+        return _page(settings, const QuestionnaireScreen());
       case Routes.processing:
-        return MaterialPageRoute(builder: (_) => const ProcessingScreen());
+        return _page(settings, const ProcessingScreen());
       case Routes.recommendations:
-        return MaterialPageRoute(builder: (_) => const RecommendationListScreen());
+        return _page(settings, const RecommendationListScreen());
       case Routes.careerDetail:
-        return MaterialPageRoute(builder: (_) => const CareerDetailScreen());
+        return _page(settings, const CareerDetailScreen());
       case Routes.courseDetail:
-        return MaterialPageRoute(builder: (_) => const CourseDetailScreen());
+        return _page(settings, const CourseDetailScreen());
       case Routes.collegeFinder:
-        return MaterialPageRoute(builder: (_) => const CollegeFinderScreen());
+        return _page(settings, const CollegeFinderScreen());
       case Routes.comparison:
-        return MaterialPageRoute(builder: (_) => const ComparisonScreen());
+        return _page(settings, const ComparisonScreen());
       case Routes.profile:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return _page(settings, const ProfileScreen());
       case Routes.attemptHistory:
-        return MaterialPageRoute(builder: (_) => const AttemptHistoryScreen());
+        return _page(settings, const AttemptHistoryScreen());
       default:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
+        return _page(
+          settings,
+          Scaffold(
             body: Center(child: Text('No route defined for ${settings.name}')),
           ),
         );

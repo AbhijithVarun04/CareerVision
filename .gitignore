@@ -49,10 +49,12 @@ app.*.map.json
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+*-debug.log
 
 # Cloud Functions / Node
 functions/node_modules/
 functions/.runtimeconfig.json
+functions/test/fixtures/*.cache.json
 
 # Environment and secret files
 .env
@@ -62,3 +64,7 @@ functions/.runtimeconfig.json
 # Firebase config (contains project identifiers - regenerable via flutterfire configure)
 lib/firebase_options.dart
 android/app/google-services.json
+functions/.secret.local
+
+# Local backup files — do not commit
+functions/clients/geminiClient.backup.js

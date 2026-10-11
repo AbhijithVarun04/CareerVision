@@ -27,6 +27,7 @@ ${SIGNAL_DIMENSIONS.join(", ")}
 
 Rules:
 - Base scores only on what's implied by their answers — do not invent unstated traits.
+- Write the summary in the second person, speaking directly to the student ("You enjoy...", "You do your best work..."). Never write "this student" or "the student". Use plain, friendly words and describe only what their answers show.
 - Return ONLY a JSON object shaped exactly like this, with no extra text:
 {
   "signals": {
@@ -39,7 +40,7 @@ Rules:
     "independence_preference": <0-10 number>,
     "risk_tolerance": <0-10 number>
   },
-  "summary": "<one plain-English sentence summarizing this student's profile>"
+  "summary": "<one or two plain-English sentences, written to the student as 'you'>"
 }`;
 }
 
