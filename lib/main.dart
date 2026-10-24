@@ -1,6 +1,7 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'app.dart';
 import 'firebase_options.dart';
@@ -21,6 +22,7 @@ void main() async {
     // Same region as ProcessingScreen so both use the same instance.
     FirebaseFunctions.instanceFor(region: 'asia-south1')
         .useFunctionsEmulator(_emulatorHost, 5001);
+    FirebaseFirestore.instance.useFirestoreEmulator(_emulatorHost, 8080);
   }
 
   runApp(const CareerVisionApp());

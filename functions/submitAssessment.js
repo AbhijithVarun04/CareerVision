@@ -12,10 +12,6 @@ const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 const TAVILY_API_KEY = defineSecret('TAVILY_API_KEY');
 const EXA_API_KEY = defineSecret('EXA_API_KEY');
 
-// TEMPORARY: Auth isn't built yet. Set REQUIRE_AUTH = true before any real deploy.
-const REQUIRE_AUTH = false;
-const DEV_UID = 'dev-user';
-
 const MAX_ITEMS = 20;
 const MAX_TEXT = 200;
 
@@ -129,10 +125,11 @@ exports.submitAssessment = onCall(
     memory: '512MiB',
   },
   async (request) => {
-    if (REQUIRE_AUTH && !request.auth) {
+    // Every call must come from a signed-in student; there is no bypass.
+    if (!request.auth) {
       throw new HttpsError('unauthenticated', 'Please sign in first.');
     }
-    const uid = request.auth?.uid ?? DEV_UID;
+    const uid = request.auth.uid;
     const questionnaire = validateQuestionnaire(request.data?.questionnaire);
 
     let result;

@@ -4,6 +4,8 @@ const {
   validateSynthesis,
   applyEvidenceGuard,
   guardCareer,
+  buildPrompt,
+  tidyList,
 } = require("../pipeline/synthesizer");
 const { SIGNAL_DIMENSIONS } = require("../pipeline/signalExtraction");
 
@@ -154,4 +156,57 @@ test('guardCareer: never upgrades quality and does not mutate input', () => {
     JSON.stringify(input),
     snapshot
   );
+});
+
+test('buildPrompt asks for full degree names and sourced certifications', () => {
+  const p = buildPrompt([{ career: 'A', tavilyAnswer: null, demandSources: [], requirementSources: [] }]);
+  assert.match(p, /FULL, official degree names/);
+  assert.match(p, /Never a bare subject name/);
+  assert.match(p, /Only include certifications supported by the sources/);
+  assert.match(p, /Never invent one/);
+});
+
+test('tidyList: trims, capitalises, de-duplicates and drops empties', () => {
+  assert.deepStrictEqual(
+    tidyList(['  maths ', 'Maths', '', '   ', 'B.Sc.   Statistics', 'b.sc. statistics']),
+    ['Maths', 'B.Sc. Statistics']
+  );
+});
+
+test('tidyList: caps the list and drops overlong entries', () => {
+  const many = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  assert.strictEqual(tidyList(many).length, 5);
+  assert.deepStrictEqual(tidyList(['x'.repeat(101), 'BCA']), ['BCA']);
+});
+
+test('tidyList: ignores non-strings and returns non-arrays unchanged', () => {
+  assert.deepStrictEqual(tidyList([null, 5, 'BCA']), ['BCA']);
+  assert.strictEqual(tidyList(undefined), undefined);
+});
+
+test('tidyList is idempotent', () => {
+  const once = tidyList(['  statistics ', 'B.Tech  IT']);
+  assert.deepStrictEqual(tidyList(once), once);
+});
+
+test('guardCareer tidies degrees and certifications without mutating input', () => {
+  const input = {
+    median_salary_lpa: 6,
+    demand_level: 'high',
+    data_quality: 'good',
+    chennai_demand_note: null,
+    degrees: ['maths', 'Maths '],
+    certifications: [],
+  };
+  const snapshot = JSON.stringify(input);
+  const r = guardCareer(input);
+  assert.deepStrictEqual(r.degrees, ['Maths']);
+  assert.deepStrictEqual(r.certifications, []);
+  assert.strictEqual(JSON.stringify(input), snapshot);
+});
+
+test('guardCareer leaves a career without degrees/certifications fields alone', () => {
+  const r = guardCareer({ median_salary_lpa: 6, demand_level: 'high', data_quality: 'good', chennai_demand_note: null });
+  assert.ok(!('degrees' in r));
+  assert.ok(!('certifications' in r));
 });

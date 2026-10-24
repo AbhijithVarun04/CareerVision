@@ -49,3 +49,4 @@ exports.testSignalExtraction = onCall(
 );
 
 exports.submitAssessment = require('./submitAssessment').submitAssessment;
+exports.findColleges = require('./findColleges').findColleges;

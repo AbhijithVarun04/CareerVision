@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -36,11 +37,20 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.repeat(reverse: true);
 
     // Navigate onward after a short splash duration.
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, Routes.welcome);
-      }
-    });
+    _goNext();
+  }
+
+  // Waits at least the splash duration, then routes by sign-in state.
+  Future<void> _goNext() async {
+    final minSplash = Future.delayed(const Duration(milliseconds: 1800));
+    // The first auth state event is the restored session (or null).
+    final user = await FirebaseAuth.instance.authStateChanges().first;
+    await minSplash;
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(
+      context,
+      user != null ? Routes.home : Routes.welcome,
+    );
   }
 
   @override

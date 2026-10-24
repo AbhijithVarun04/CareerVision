@@ -53,8 +53,8 @@ For EACH career, in the SAME ORDER, return an object with exactly these fields:
 - "median_salary_lpa": a number (typical entry-level salary in lakhs per annum, LPA) or null; follow the SALARY RULES below
 - "demand_level": one of "very_high", "high", "moderate", "low", "unknown", based only on the evidence (hiring volume, growth, job openings). Use "unknown" if there is no evidence.
 - "chennai_demand_note": one short sentence about hiring demand for this role in Chennai (employers, openings, growth), or null. This field is ONLY about hiring demand. Ignore all salary information when writing this field. NEVER include ₹, LPA, salary, pay, compensation, or any salary range. Use null if the sources say nothing about Chennai-specific hiring demand.
-- "degrees": array of degree/qualification names typically required (e.g. "B.E. Computer Science"). Empty array if not found.
-- "certifications": array of relevant certifications. Empty array if not found.
+- "degrees": array of up to 4 FULL, official degree names a student would actually apply for, written the way a college prospectus writes them, e.g. "B.E. Computer Science and Engineering", "B.Tech Information Technology", "B.Sc. Statistics", "BCA". Never a bare subject name like "maths" or "statistics". Prefer degrees available in India. Empty array if the sources do not support any.
+- "certifications": array of up to 5 specific, named professional certifications or courses that the sources mention for this role, e.g. "AWS Certified Solutions Architect - Associate", "Google Data Analytics Professional Certificate". Use the full official name. Only include certifications supported by the sources; empty array if none are mentioned. Never invent one.
 - "required_signals": how much the ROLE ITSELF demands each of these exact dimensions, scored 0-10 (this describes the career, not any student): ${SIGNAL_DIMENSIONS.join(", ")}
 - "data_quality": "good" (salary + demand + requirements all backed by data), "partial", or "poor"
 
@@ -193,8 +193,36 @@ async function synthesize(geminiApiKey, rawItems) {
 // Words that mean the note is talking about pay instead of hiring demand.
 const SALARY_TALK = /₹|\brs\.?\b|\binr\b|\blpa\b|\blakh|\bsalar|\bpay\b|\bpaid\b|\bcompensation\b|\bctc\b|\bearn/i;
 
+const MAX_QUALIFICATIONS = 5;
+const MAX_QUALIFICATION_CHARS = 100;
+
+/**
+ * Safety net for degrees/certifications: collapse whitespace, capitalise the first
+ * letter, drop empty or overlong entries, de-duplicate (case-insensitive), cap the length.
+ * Non-arrays are returned unchanged. Idempotent.
+ */
+function tidyList(list) {
+  if (!Array.isArray(list)) return list;
+  const seen = new Set();
+  const out = [];
+  for (const raw of list) {
+    if (typeof raw !== 'string') continue;
+    let s = raw.replace(/\s+/g, ' ').trim();
+    if (!s || s.length > MAX_QUALIFICATION_CHARS) continue;
+    s = s.charAt(0).toUpperCase() + s.slice(1);
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+    if (out.length === MAX_QUALIFICATIONS) break;
+  }
+  return out;
+}
+
 function guardCareer(c) {
   const out = { ...c };
+  if (Array.isArray(out.degrees)) out.degrees = tidyList(out.degrees);
+  if (Array.isArray(out.certifications)) out.certifications = tidyList(out.certifications);
 
   if (typeof out.chennai_demand_note === 'string' && SALARY_TALK.test(out.chennai_demand_note)) {
     out.chennai_demand_note = null;
@@ -214,5 +242,7 @@ module.exports = {
   applyEvidenceGuard,
   trimCareerData,
   guardCareer,
-  normalizeSynthesisShape
+  normalizeSynthesisShape,
+  buildPrompt,
+  tidyList
 };

@@ -1,20 +1,82 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../config/constants.dart';
+import '../../services/comparison_service.dart';
 import '../../widgets/app_scaffold.dart';
+
+const int _minCompare = 2;
+const int _maxCompare = 3;
 
 double _num(dynamic v) => v is num ? v.toDouble() : 0.0;
 
 String _pct(dynamic v) => '${(_num(v) * 100).round()}%';
 
-class RecommendationListScreen extends StatelessWidget {
+// The Firestore recommendation document id. Null means the item cannot be
+// selected for comparison (there is no name-based fallback on purpose).
+String? _idOf(Map<String, dynamic> item) {
+  final id = item['id'];
+  return id is String && id.isNotEmpty ? id : null;
+}
+
+class RecommendationListScreen extends StatefulWidget {
   const RecommendationListScreen({super.key});
 
   @override
+  State<RecommendationListScreen> createState() =>
+      _RecommendationListScreenState();
+}
+
+class _RecommendationListScreenState extends State<RecommendationListScreen> {
+  final Set<String> _selected = {};
+
+  void _toggle(String id, bool? on) {
+    setState(() {
+      if (on == true) {
+        if (_selected.length < _maxCompare) _selected.add(id);
+      } else {
+        _selected.remove(id);
+      }
+    });
+  }
+
+  void _compare(List<Map<String, dynamic>> items, String? attemptId) {
+    final chosen = items.where((e) {
+      final id = _idOf(e);
+      return id != null && _selected.contains(id);
+    }).toList();
+    if (chosen.length < _minCompare || chosen.length > _maxCompare) return;
+
+    // Captured now: the messenger belongs to the app, so the message still
+    // shows on the comparison screen after we navigate.
+    final messenger = ScaffoldMessenger.of(context);
+    unawaited(
+      ComparisonService()
+          .saveSelection(
+        attemptId: attemptId,
+        recommendationIds: chosen.map((e) => _idOf(e)!).toList(),
+      )
+          .catchError((Object e) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(e is ComparisonSaveException
+              ? e.message
+              : 'Could not save this comparison.'),
+          duration: const Duration(seconds: 6),
+        ));
+      }),
+    );
+
+    Navigator.pushNamed(context, Routes.comparison, arguments: {
+      'attemptId': attemptId,
+      'careers': chosen,
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Set by ProcessingScreen: the full submitAssessment response.
-    // TODO(auth): once login exists, this same data can also be loaded from
-    // students/{uid}/attempts/{attemptId} (used later by Attempt History).
+    // Either the submitAssessment response (fresh run) or the same shape
+    // rebuilt from Firestore by Attempt History.
     final args = ModalRoute.of(context)?.settings.arguments;
     final data = args is Map ? Map<String, dynamic>.from(args) : null;
 
@@ -29,6 +91,8 @@ class RecommendationListScreen extends StatelessWidget {
 
     final summary = data?['summary'];
     final weights = data?['weights'];
+    final rawAttemptId = data?['attemptId'];
+    final attemptId = rawAttemptId is String ? rawAttemptId : null;
 
     return AppScaffold(
       title: 'Recommendations',
@@ -42,18 +106,70 @@ class RecommendationListScreen extends StatelessWidget {
           ),
         ),
       )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length + 1,
-        itemBuilder: (context, i) {
-          if (i == 0) {
-            return _Header(
-              summary: summary is String ? summary : null,
-              weights: weights is Map ? Map<String, dynamic>.from(weights) : null,
-            );
-          }
-          return _RecommendationCard(item: items[i - 1]);
-        },
+          : Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: items.length + 1,
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  return _Header(
+                    summary: summary is String ? summary : null,
+                    weights: weights is Map
+                        ? Map<String, dynamic>.from(weights)
+                        : null,
+                  );
+                }
+                final item = items[i - 1];
+                final id = _idOf(item);
+                final isSelected = id != null && _selected.contains(id);
+                return _RecommendationCard(
+                  item: item,
+                  selected: isSelected,
+                  canSelect: id != null &&
+                      (isSelected || _selected.length < _maxCompare),
+                  onSelect: (on) {
+                    if (id != null) _toggle(id, on);
+                  },
+                );
+              },
+            ),
+          ),
+          _CompareBar(
+            count: _selected.length,
+            onPressed: _selected.length >= _minCompare &&
+                _selected.length <= _maxCompare
+                ? () => _compare(items, attemptId)
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompareBar extends StatelessWidget {
+  const _CompareBar({required this.count, required this.onPressed});
+
+  final int count;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count == 0
+        ? 'Tick 2 or 3 careers to compare'
+        : count == 1
+        ? 'Tick 1 more to compare'
+        : 'Compare $count careers';
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton(onPressed: onPressed, child: Text(label)),
+        ),
       ),
     );
   }
@@ -96,9 +212,17 @@ class _Header extends StatelessWidget {
 }
 
 class _RecommendationCard extends StatelessWidget {
-  const _RecommendationCard({required this.item});
+  const _RecommendationCard({
+    required this.item,
+    required this.selected,
+    required this.canSelect,
+    required this.onSelect,
+  });
 
   final Map<String, dynamic> item;
+  final bool selected;
+  final bool canSelect;
+  final ValueChanged<bool?> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +234,6 @@ class _RecommendationCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        // Career Detail is still a placeholder; it will read this map later.
         onTap: () => Navigator.pushNamed(
           context,
           Routes.careerDetail,
@@ -163,7 +286,15 @@ class _RecommendationCard extends StatelessWidget {
               if (reasoning is String && reasoning.trim().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(reasoning, style: theme.textTheme.bodyMedium),
-              ]
+              ],
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: selected,
+                onChanged: canSelect ? onSelect : null,
+                title: const Text('Add to comparison'),
+              ),
             ],
           ),
         ),

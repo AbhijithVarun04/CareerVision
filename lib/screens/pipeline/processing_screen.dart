@@ -83,9 +83,12 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
       if (!mounted) return;
       _ticker?.cancel();
-      Navigator.pushReplacementNamed(
+      // Clear back to Home so Back from the results does not land on the
+      // half-filled questionnaire (stack becomes Home, Recommendations).
+      Navigator.pushNamedAndRemoveUntil(
         context,
         Routes.recommendations,
+        ModalRoute.withName(Routes.home),
         arguments: data,
       );
     } on FirebaseFunctionsException catch (e) {
